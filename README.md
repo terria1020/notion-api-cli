@@ -1,101 +1,80 @@
 # Notion API CLI
 
-A simple CLI tool for interacting with Notion API, enabling safe integration for AI model use through environment-based credential management.
+A compact command-line interface for interacting with the Notion API with environment-based credential handling and structured logging so it plays nicely inside automation workflows.
 
 ## Features
 
-- **Get Page**: Retrieve Notion page content and properties
-- **Update Page**: Modify page title and properties (select, checkbox, multi_select)
+- Retrieve any page via ID or URL, including title, timestamps, properties, and optionally block/child content.
+- Update page titles and properties (select, checkbox, multi_select, dates, numbers, relations, people, rich_text, etc.) with schema-aware shorthand parsing.
+- Work with blocks: list, append, update, delete, and manipulate table blocks (create tables, fetch rows, and append/update rows).
+- Browse workspace content: search root pages/databases, list database pages, and discover child pages.
+- Manage comments: list, create, and reply to discussions on pages or specific blocks.
+- Inspect databases and query rows with paging/auto-expand support.
 
 ## Setup
 
-### 1. Create Notion Integration
-
-1. Go to [Notion Integrations](https://www.notion.so/my-integrations)
-2. Click "Create new integration"
-3. Name it and select capabilities needed
-4. Copy the "Internal Integration Token"
-
-### 2. Share Page with Integration
-
-For each page you want to access:
-1. Open the page
-2. Click "..." (More options) → "Add connections"
-3. Select your integration
-
-### 3. Configure CLI
+1. Create a Notion integration at https://www.notion.so/my-integrations and copy the internal integration token.
+2. Share every page you plan to read or edit with that integration via the page’s *Share → Add connections* menu.
+3. Install dependencies with `npm install`.
+4. Copy `.env.example` to `.env` and add your token (see **Environment** below).
 
 ```bash
-# Create .env file
 cp .env.example .env
-
-# Edit .env and add your token
-# NOTION_API_TOKEN=your_token_here
+# then edit .env to set NOTION_API_TOKEN=your_token_here
 ```
 
-### 4. Install Dependencies
+## Environment
 
-```bash
-npm install
-```
+- `NOTION_API_TOKEN` (required) – integration token from Notion.
+- `LOG_LEVEL` (default `info`) – controls console/file logging (`debug` / `info` / `error`).
+- `NODE_ENV` – affects logger verbosity (non-`production` runs in `debug` mode by default).
+
+Logs are emitted to `logs/error.log` (errors only) and `logs/combined.log` (all levels) while JSON-friendly messages remain on `stdout`.
 
 ## Usage
 
-### Get Page
+Run the CLI via `node notion-api-cli.js [command] [options]`.
+
+### Page Operations
+
+- `--get-page <id-or-url>` – fetch page metadata and formatted properties.
+- `--update-page <id-or-url>` – change the title and/or properties. Use `--title "New Title"` and `--properties '{"Status":"Done","Tags":["work","urgent"]}'`.
+
+### Block Operations
+
+- `--get-page-blocks <id-or-url>` – dump block hierarchy (limit with `--limit`).
+- `--append-blocks <id-or-url> --blocks '<JSON>'` – add new blocks (paragraphs, headings, lists, to-dos, code, callouts, dividers).
+- `--update-block <block-id>` – edit text (`--text`) or toggle checkboxes (`--checked true|false`).
+- `--delete-block <block-id>` – remove a block.
+- Table helpers: `--create-table`, `--get-table`, `--append-table-row`, `--update-table-row` with `--columns`, `--headers`, and `--cells` payloads matching the block’s layout.
+
+### Database & Workspace Queries
+
+- `--get-database <id-or-url>` – inspect database schema.
+- `--query-database <id-or-url>` – list rows (`--limit`, `--auto-expand` to fetch blocks).
+- `--list-database-pages <id-or-url>` – list rows with an optional `--limit`.
+- `--search-roots` – search workspace roots, filter by type (`--type page|database|all`), and optionally include rows (`--include-db-rows`).
+- `--find-child-pages <id-or-url>` – enumerate children with `--direct-only` or `--limit`.
+
+### Comment Management
+
+- `--list-comments <target>` – show recent comments on a page/block (`--limit`).
+- `--create-comment <target> --comment "text"` – add a comment.
+- `--reply-comment <discussion-id> --comment "text"` – reply to a specific discussion.
+
+## Examples
 
 ```bash
-node notion-api-cli.js --get-page <page-id>
+node notion-api-cli.js --get-page 0d5af387f61183a5b4618142b86338a5
+node notion-api-cli.js --update-page 0d5af387f61183a5b4618142b86338a5 --title "Weekly Notes" --properties '{"Status":"In Review","Tags":["sprint"]}'
+node notion-api-cli.js --append-blocks 0d5af387f61183a5b4618142b86338a5 --blocks '[{"type":"paragraph","text":"Automated update"}]'
+node notion-api-cli.js --create-comment 0d5af387f61183a5b4618142b86338a5 --comment "Please review"
+node notion-api-cli.js --query-database https://www.notion.so/... --limit 5 --auto-expand
 ```
 
-Returns JSON with:
-- Page ID and URL
-- Title
-- Creation and modification timestamps
-- All page properties
+## Troubleshooting
 
-**Example:**
-```bash
-node notion-api-cli.js --get-page 123abc456def789
-```
+- Ensure the integration token has access to every workspace or page you target.
+- Page IDs accept both hyphenated and compact forms (UUID vs. 32 hex digits).
+- Use JSON valid strings for properties, comments, and block payloads. Invalid JSON will be rejected with a descriptive error message.
 
-### Update Page
-
-```bash
-node notion-api-cli.js --update-page <page-id> --title "New Title" --properties '{"Status":"Done"}'
-```
-
-**Options:**
-- `--title "Title"`: Set page title
-- `--properties '{"key":"value"}'`: Update properties as JSON
-  - String values → select property
-  - Boolean values → checkbox property
-  - Array values → multi_select property
-
-**Examples:**
-```bash
-# Update title only
-node notion-api-cli.js --update-page 123abc456def789 --title "Updated Title"
-
-# Update with properties
-node notion-api-cli.js --update-page 123abc456def789 --title "New Title" --properties '{"Status":"Done","Priority":"High"}'
-
-# Checkbox and multi_select
-node notion-api-cli.js --update-page 123abc456def789 --properties '{"IsCompleted":true,"Tags":["work","urgent"]}'
-```
-
-## Logging
-
-Logs are written to:
-- `logs/error.log`: Error-level logs only
-- `logs/combined.log`: All logs
-
-Set `LOG_LEVEL` in .env to control verbosity:
-- `debug`: Detailed debug information
-- `info`: General information (default)
-- `error`: Errors only
-
-## Notes
-
-- Page IDs can include or exclude hyphens (both formats accepted)
-- Properties must match existing page property types
-- The integration must have access to the page you're trying to modify
