@@ -1,0 +1,14 @@
+# Local credentials (never commit)
+.env
+credentials.json
+ssh-credentials.json
+
+# Dependencies
+node_modules/
+
+# Logs & misc
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store

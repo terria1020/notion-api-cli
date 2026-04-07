@@ -1,0 +1,27 @@
+{
+  "name": "notion-api-cli",
+  "version": "1.0.0",
+  "description": "Notion API CLI tool for retrieving and modifying pages — designed for safe AI model use via environment-based credential management",
+  "main": "notion-api-cli.js",
+  "bin": {
+    "notion-api-cli": "./notion-api-cli.js"
+  },
+  "scripts": {
+    "help": "node notion-api-cli.js --help"
+  },
+  "keywords": [
+    "notion",
+    "api",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@notionhq/client": "^3.0.0",
+    "dotenv": "^16.0.0",
+    "winston": "^3.19.0"
+  }
+}
