@@ -1590,6 +1590,7 @@ async function searchRoots(notion, query = '', objectType = 'all', limit = 30, i
       query,
       type: objectType,
       totalMatched: results.length,
+      matches: results,
       rootCount: roots.length,
       roots,
       databaseRows,
