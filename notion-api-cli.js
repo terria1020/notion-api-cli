@@ -94,6 +94,18 @@ function die(msg) {
   throw CLI_EXIT;
 }
 
+function handleNotionError(err, notFoundMessage) {
+  if (err === CLI_EXIT) {
+    throw err;
+  }
+  if (err.status === 404 && notFoundMessage) {
+    die(notFoundMessage);
+  } else if (err.status === 401) {
+    die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
+  }
+  die(err.message);
+}
+
 // ─── Helper Functions ────────────────────────────────────────────────────────
 
 function extractPageIdFromUrl(input) {
@@ -746,13 +758,7 @@ async function getPage(notion, pageIdOrUrl) {
     const formatted = formatPageOutput(page);
     console.log(JSON.stringify(formatted, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Page not found: ${pageId}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else {
-      die(`Failed to retrieve page: ${err.message}`);
-    }
+    handleNotionError(err, `Page not found: ${pageId}`);
   }
 }
 
@@ -820,13 +826,7 @@ async function updatePage(notion, pageIdOrUrl, title, propertiesJson) {
     const formatted = formatPageOutput(updatedPage);
     console.log(JSON.stringify(formatted, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Page not found: ${pageId}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else {
-      die(`Failed to update page: ${err.message}`);
-    }
+    handleNotionError(err, `Page not found: ${pageId}`);
   }
 }
 
@@ -846,13 +846,7 @@ async function getDatabase(notion, databaseIdOrUrl) {
     const formatted = formatDatabaseOutput(database);
     console.log(JSON.stringify(formatted, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Database not found: ${databaseId}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else {
-      die(`Failed to retrieve database: ${err.message}`);
-    }
+    handleNotionError(err, `Database not found: ${databaseId}`);
   }
 }
 
@@ -894,13 +888,7 @@ async function queryDatabase(notion, databaseIdOrUrl, limit = 10, autoExpand = f
     const formatted = formatQueryResults(response, autoExpand);
     console.log(JSON.stringify(formatted, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Database not found: ${databaseId}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else {
-      die(`Failed to query database: ${err.message}`);
-    }
+    handleNotionError(err, `Database not found: ${databaseId}`);
   }
 }
 
@@ -932,13 +920,7 @@ async function getPageBlocks(notion, pageIdOrUrl, limit = 100) {
 
     console.log(JSON.stringify(output, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Page not found: ${pageId}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else {
-      die(`Failed to retrieve blocks: ${err.message}`);
-    }
+    handleNotionError(err, `Page not found: ${pageId}`);
   }
 }
 
@@ -983,13 +965,7 @@ async function appendBlocks(notion, pageIdOrUrl, blocksJson) {
 
     console.log(JSON.stringify(output, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Page not found: ${pageId}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else if (err !== CLI_EXIT) {
-      die(`Failed to append blocks: ${err.message}`);
-    }
+    handleNotionError(err, `Page not found: ${pageId}`);
   }
 }
 
@@ -1059,13 +1035,7 @@ async function updateBlock(notion, blockId, text, checked) {
 
     console.log(JSON.stringify(output, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Block not found: ${blockId}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else if (err !== CLI_EXIT) {
-      die(`Failed to update block: ${err.message}`);
-    }
+    handleNotionError(err, `Block not found: ${blockId}`);
   }
 }
 
@@ -1089,13 +1059,7 @@ async function deleteBlock(notion, blockId) {
 
     console.log(JSON.stringify(output, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Block not found: ${blockId}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else {
-      die(`Failed to delete block: ${err.message}`);
-    }
+    handleNotionError(err, `Block not found: ${blockId}`);
   }
 }
 
@@ -1141,13 +1105,7 @@ async function getTableContent(notion, blockId) {
 
     console.log(JSON.stringify(tableData, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Block not found: ${blockId}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else {
-      die(`Failed to retrieve table content: ${err.message}`);
-    }
+    handleNotionError(err, `Block not found: ${blockId}`);
   }
 }
 
@@ -1197,13 +1155,7 @@ async function updateTableRow(notion, blockId, rowIndex, cellsJson) {
 
     console.log(JSON.stringify(output, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Block not found: ${blockId}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else {
-      die(`Failed to update table row: ${err.message}`);
-    }
+    handleNotionError(err, `Block not found: ${blockId}`);
   }
 }
 
@@ -1241,13 +1193,7 @@ async function appendTableRow(notion, blockId, cellsJson) {
 
     console.log(JSON.stringify(output, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Block not found: ${blockId}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else {
-      die(`Failed to append table row: ${err.message}`);
-    }
+    handleNotionError(err, `Block not found: ${blockId}`);
   }
 }
 
@@ -1331,13 +1277,7 @@ async function createTable(notion, pageIdOrUrl, columns, headers, rows, hasColum
       appendedRowCount: appendedRows,
     }, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Page not found: ${pageId}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else {
-      die(`Failed to create table: ${err.message}`);
-    }
+    handleNotionError(err, `Page not found: ${pageId}`);
   }
 }
 
@@ -1382,13 +1322,7 @@ async function listComments(notion, blockIdOrUrl, limit = 50) {
       comments,
     }, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Comment target not found: ${targetId}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else {
-      die(`Failed to list comments: ${err.message}`);
-    }
+    handleNotionError(err, `Comment target not found: ${targetId}`);
   }
 }
 
@@ -1430,13 +1364,7 @@ async function createComment(notion, targetIdOrUrl, commentText) {
       text: getPlainTextFromRichText(response.rich_text),
     }, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Comment target not found: ${targetIdOrUrl}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else {
-      die(`Failed to create comment: ${err.message}`);
-    }
+    handleNotionError(err, `Comment target not found: ${targetIdOrUrl}`);
   }
 }
 
@@ -1461,13 +1389,7 @@ async function replyComment(notion, discussionId, commentText) {
       text: getPlainTextFromRichText(response.rich_text),
     }, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Discussion not found: ${discussionId}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else {
-      die(`Failed to reply comment: ${err.message}`);
-    }
+    handleNotionError(err, `Discussion not found: ${discussionId}`);
   }
 }
 
@@ -1507,13 +1429,7 @@ async function listDatabasePages(notion, databaseIdOrUrl, limit = 50) {
       pages,
     }, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Database not found: ${databaseId}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else {
-      die(`Failed to list database pages: ${err.message}`);
-    }
+    handleNotionError(err, `Database not found: ${databaseId}`);
   }
 }
 
@@ -1596,11 +1512,7 @@ async function searchRoots(notion, query = '', objectType = 'all', limit = 30, i
       databaseRows,
     }, null, 2));
   } catch (err) {
-    if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else {
-      die(`Failed to search roots: ${err.message}`);
-    }
+    handleNotionError(err);
   }
 }
 
@@ -1661,13 +1573,7 @@ async function findChildPages(notion, pageIdOrUrl, recursive = true, limit = 200
       childPages,
     }, null, 2));
   } catch (err) {
-    if (err.status === 404) {
-      die(`Page or block not found during traversal: ${err.message}`);
-    } else if (err.status === 401) {
-      die('Unauthorized: Invalid or expired NOTION_API_TOKEN');
-    } else {
-      die(`Failed to find child pages: ${err.message}`);
-    }
+    handleNotionError(err, `Page or block not found during traversal: ${err.message}`);
   }
 }
 
