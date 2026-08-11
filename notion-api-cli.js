@@ -575,6 +575,7 @@ function buildBlockObject(blockDef) {
       blockObj.callout = {
         rich_text: text ? [{ type: 'text', text: { content: text } }] : [],
         icon: icon ? { type: 'emoji', emoji: icon } : { type: 'emoji', emoji: '💡' },
+        color: color || 'default',
       };
       return blockObj;
 
