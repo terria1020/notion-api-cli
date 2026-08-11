@@ -512,10 +512,26 @@ function formatBlockContent(block) {
 }
 
 function buildBlockObject(blockDef) {
-  const { type, text, checked, language, icon, color } = blockDef;
+  const { type, text, checked, language, icon, color, children } = blockDef;
   const blockObj = {};
 
+  // toggle처럼 자식을 품는 블록을 위해 재귀 변환합니다.
+  const buildChildren = () =>
+    Array.isArray(children) && children.length > 0
+      ? { children: children.map(buildBlockObject) }
+      : {};
+
   switch (type) {
+    case 'toggle':
+      blockObj.object = 'block';
+      blockObj.type = 'toggle';
+      blockObj.toggle = {
+        rich_text: text ? [{ type: 'text', text: { content: text } }] : [],
+        color: color || 'default',
+        ...buildChildren(),
+      };
+      return blockObj;
+
     case 'paragraph':
       blockObj.object = 'block';
       blockObj.type = 'paragraph';
@@ -576,6 +592,7 @@ function buildBlockObject(blockDef) {
         rich_text: text ? [{ type: 'text', text: { content: text } }] : [],
         icon: icon ? { type: 'emoji', emoji: icon } : { type: 'emoji', emoji: '💡' },
         color: color || 'default',
+        ...buildChildren(),
       };
       return blockObj;
 
@@ -1915,7 +1932,9 @@ Options for --append-blocks:
   --blocks '<JSON>'                     Array of block objects to append (required)
                                         Supported types: paragraph, heading_1/2/3,
                                         bulleted_list_item, numbered_list_item,
-                                        to_do, quote, code, callout, divider
+                                        to_do, quote, code, callout, toggle, divider
+                                        Optional per block: color, icon (callout),
+                                        language (code), children (toggle/callout)
 
 Global output options (any command):
   --pretty                              Indent JSON output (default: compact, one line)
