@@ -108,18 +108,41 @@ function handleNotionError(err, notFoundMessage) {
 
 // ─── Helper Functions ────────────────────────────────────────────────────────
 
+// 32자리 hex 또는 하이픈이 들어간 UUID 형태를 모두 받습니다.
+const NOTION_ID_PATTERN = '[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+
+// notion.so와 notion.com을 모두 인식합니다. Notion이 app.notion.com으로
+// 도메인을 옮기면서 "복사한 링크 붙여넣기"가 통째로 거부되던 문제가 있었습니다.
+const NOTION_URL_HOST = /(?:^|\/\/)(?:[\w-]+\.)?notion\.(?:so|com)\//i;
+
+// ?p=<id>: 데이터베이스 뷰에서 페이지를 사이드 피크로 열었을 때의 형태.
+// 이때 경로의 id는 데이터베이스이고 실제 대상은 p= 쪽이라 먼저 봅니다.
+const NOTION_PEEK_PARAM = new RegExp(`[?&]p=(${NOTION_ID_PATTERN})(?:[&#]|$)`, 'i');
+
+// 경로 마지막 조각의 id. 앞의 워크스페이스 세그먼트와 제목 슬러그를 건너뜁니다.
+// ?v=<view-id> 같은 쿼리는 [^?#]로 막아 두어 뷰 id를 페이지 id로 오인하지 않습니다.
+const NOTION_PATH_ID = new RegExp(
+  `notion\\.(?:so|com)/(?:[^?#]*/)?(?:[^/?#]*-)?(${NOTION_ID_PATTERN})(?:[/?#]|$)`,
+  'i'
+);
+
 function extractPageIdFromUrl(input) {
-  // Try to parse as Notion URL
-  // https://www.notion.so/{workspace}/{slug}-{page-id}?v=...
-  // https://www.notion.so/{workspace}/{page-id}?v=...
-  // https://notion.so/{workspace}/{slug}-{page-id}?v=...
-  const urlMatch = input.match(/notion\.so\/(?:[^/]+\/)?(?:[^/?#]+-)?([0-9a-f]{32})(?:[/?#]|$)/i);
-  if (urlMatch) {
-    return urlMatch[1].toLowerCase();
+  const trimmed = String(input).trim();
+
+  // 지원 형태:
+  //   https://www.notion.so/{workspace}/{slug}-{id}?v=...
+  //   https://app.notion.com/p/{id}?v=...
+  //   https://app.notion.com/{workspace}/{slug}-{id}
+  //   https://www.notion.so/{workspace}/{db-id}?v={view-id}&p={page-id}
+  if (NOTION_URL_HOST.test(trimmed)) {
+    const match = trimmed.match(NOTION_PEEK_PARAM) || trimmed.match(NOTION_PATH_ID);
+    if (match) {
+      return normalizeNotionId(match[1]);
+    }
   }
 
-  // If not a URL, return as-is for ID validation
-  return input.toLowerCase().replace(/-/g, '');
+  // URL이 아니면 ID로 보고 그대로 넘깁니다 (검증은 validateNotionId가 합니다).
+  return normalizeNotionId(trimmed);
 }
 
 function validateNotionId(id) {
