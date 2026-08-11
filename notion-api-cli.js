@@ -511,6 +511,18 @@ function formatBlockContent(block) {
   }
 }
 
+// Notion 은 children.append 에 after 를 받아 특정 블록 뒤에 끼워 넣는다.
+// 없으면 항상 끝에 붙어서, 이미 뒤에 블록이 있으면 순서를 맞출 수 없다.
+function afterOption(after) {
+  if (!after) {
+    return {};
+  }
+  if (!validateNotionId(after)) {
+    die(`Invalid block ID for --after: ${after}`);
+  }
+  return { after: normalizeNotionId(after) };
+}
+
 function buildBlockObject(blockDef) {
   const { type, text, checked, language, icon, color, children } = blockDef;
   const blockObj = {};
@@ -1209,7 +1221,7 @@ async function getPageBlocks(notion, pageIdOrUrl, limit = 100) {
   }
 }
 
-async function appendBlocks(notion, pageIdOrUrl, blocksJson) {
+async function appendBlocks(notion, pageIdOrUrl, blocksJson, after = null) {
   const pageId = extractPageIdFromUrl(pageIdOrUrl);
 
   if (!validateNotionId(pageId)) {
@@ -1237,6 +1249,7 @@ async function appendBlocks(notion, pageIdOrUrl, blocksJson) {
     const response = await notion.blocks.children.append({
       block_id: normalizedId,
       children,
+      ...afterOption(after),
     });
 
     logger.debug(`Successfully appended ${response.results.length} blocks`);
@@ -1487,7 +1500,7 @@ async function appendTableRow(notion, blockId, cellsJson) {
   }
 }
 
-async function createTable(notion, pageIdOrUrl, columns, headers, rows, hasColumnHeader = true, hasRowHeader = false) {
+async function createTable(notion, pageIdOrUrl, columns, headers, rows, hasColumnHeader = true, hasRowHeader = false, after = null) {
   const pageId = extractPageIdFromUrl(pageIdOrUrl);
 
   if (!validateNotionId(pageId)) {
@@ -1518,6 +1531,7 @@ async function createTable(notion, pageIdOrUrl, columns, headers, rows, hasColum
 
     const createResponse = await notion.blocks.children.append({
       block_id: normalizedId,
+      ...afterOption(after),
       children: [
         {
           object: 'block',
@@ -1935,6 +1949,7 @@ Options for --append-blocks:
                                         to_do, quote, code, callout, toggle, divider
                                         Optional per block: color, icon (callout),
                                         language (code), children (toggle/callout)
+  --after <block-id>                    Insert right after this block instead of at the end
 
 Global output options (any command):
   --pretty                              Indent JSON output (default: compact, one line)
@@ -1978,6 +1993,7 @@ Options for --create-table:
   --columns <number>                    Number of columns (required if --headers omitted)
   --headers '<JSON>'                    Header row values, e.g. ["Name","Status"]
   --rows '<JSON>'                       Additional rows, e.g. [["a","b"],["c","d"]]
+  --after <block-id>                    Insert right after this block instead of at the end
   --no-column-header                    Create table without column header
   --has-row-header                      Enable row header
 
@@ -2241,9 +2257,12 @@ async function main() {
       let rows = null;
       let hasColumnHeader = true;
       let hasRowHeader = false;
+      let tableAfter = null;
 
       for (let i = 2; i < args.length; i++) {
-        if (args[i] === '--columns' && args[i + 1]) {
+        if (args[i] === '--after' && args[i + 1]) {
+          tableAfter = args[++i];
+        } else if (args[i] === '--columns' && args[i + 1]) {
           columns = parseInt(args[++i], 10);
           if (isNaN(columns) || columns < 1) {
             die('--columns must be a positive integer');
@@ -2259,7 +2278,7 @@ async function main() {
         }
       }
 
-      await createTable(notion, pageId, columns, headers, rows, hasColumnHeader, hasRowHeader);
+      await createTable(notion, pageId, columns, headers, rows, hasColumnHeader, hasRowHeader, tableAfter);
     } else if (args[0] === '--get-page-blocks') {
       const pageId = args[1];
       if (!pageId) {
@@ -2284,9 +2303,12 @@ async function main() {
       }
 
       let blocksJson = null;
+      let after = null;
       for (let i = 2; i < args.length; i++) {
         if (args[i] === '--blocks' && args[i + 1]) {
           blocksJson = args[++i];
+        } else if (args[i] === '--after' && args[i + 1]) {
+          after = args[++i];
         }
       }
 
@@ -2294,7 +2316,7 @@ async function main() {
         die('--append-blocks requires --blocks option with JSON array');
       }
 
-      await appendBlocks(notion, pageId, blocksJson);
+      await appendBlocks(notion, pageId, blocksJson, after);
     } else if (args[0] === '--update-block') {
       const blockId = args[1];
       if (!blockId) {
